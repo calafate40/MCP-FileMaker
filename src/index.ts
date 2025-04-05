@@ -105,12 +105,27 @@ function isTokenResponse(data: any): data is FileMakerTokenResponse {
  */
 async function makeFileMakerRequest(
   url: string,
-  options: RequestInit
+  options: RequestInit & {
+    fieldName?: string;
+    searchText?: string;
+  }
 ): Promise<FileMakerResponse | null> {
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
+
+  // 検索リクエストの場合はクエリを構築
+  if (options.fieldName && options.searchText && url.includes('/_find')) {
+    const query: FindQuery = {
+      query: [
+        {
+          [options.fieldName]: `=${options.searchText}`,
+        },
+      ],
+    };
+    options.body = JSON.stringify(query);
+  }
 
   try {
     const response = await fetch(url, { ...options, headers });
@@ -128,21 +143,16 @@ async function makeFileMakerRequest(
 /**
  * Get FileMaker token
  */
-async function getFileMakerToken(
-  fileName: string,
-  account: string = process.env.FILEMAKER_ACCOUNT || '',
-  password: string = process.env.FILEMAKER_PASSWORD || '',
-  serverUrl: string = DEFAULT_SERVER_URL
-): Promise<TokenResponse> {
-  const url = `${serverUrl}/fmi/data/v1/databases/${fileName}/sessions`;
+async function getFileMakerToken(fileName: string): Promise<TokenResponse> {
+  const url = `${DEFAULT_SERVER_URL}/fmi/data/v1/databases/${fileName}/sessions`;
 
   try {
     const response = await makeFileMakerRequest(url, {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${Buffer.from(`${account}:${password}`).toString(
-          'base64'
-        )}`,
+        Authorization: `Basic ${Buffer.from(
+          `${process.env.FILEMAKER_ACCOUNT}:${process.env.FILEMAKER_PASSWORD}`
+        ).toString('base64')}`,
       },
     });
 
@@ -197,30 +207,22 @@ async function getFileMakerToken(
  * Find records in FileMaker
  */
 async function findRecords(
-  fileName: string,
   fieldName: string,
   searchText: string,
   token: string,
-  serverUrl: string = DEFAULT_SERVER_URL,
-  layoutName: string = DEFAULT_LAYOUT
+  fileName: string,
+  layoutName: string
 ): Promise<FindRecordsResponse> {
   try {
-    const query: FindQuery = {
-      query: [
-        {
-          [fieldName]: `=${searchText}`,
-        },
-      ],
-    };
-
     const response = (await makeFileMakerRequest(
-      `${serverUrl}/fmi/data/v1/databases/${fileName}/layouts/${layoutName}/_find`,
+      `${DEFAULT_SERVER_URL}/fmi/data/v1/databases/${fileName}/layouts/${layoutName}/_find`,
       {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(query),
+        fieldName,
+        searchText,
       }
     )) as FindResponse;
 
@@ -230,7 +232,7 @@ async function findRecords(
         error: {
           type: 'INVALID_RESPONSE',
           message: 'FileMakerサーバーからの応答が無効です',
-          details: { serverUrl, fileName, layoutName },
+          details: { fileName, layoutName },
         },
       };
     }
@@ -243,7 +245,6 @@ async function findRecords(
           message: response.messages[0].message,
           details: {
             code: response.messages[0].code,
-            serverUrl,
             fileName,
             layoutName,
           },
@@ -263,7 +264,6 @@ async function findRecords(
         type: 'API_ERROR',
         message: error instanceof Error ? error.message : 'Unknown error',
         details: {
-          serverUrl,
           fileName,
           layoutName,
           originalError: String(error),
@@ -293,18 +293,6 @@ const server = new McpServer(
               .describe(
                 'FileMaker database name (uses env FILEMAKER_DATABASE if not provided)'
               ),
-            account: z
-              .string()
-              .optional()
-              .describe('Account name (uses env if not provided)'),
-            password: z
-              .string()
-              .optional()
-              .describe('Password (uses env if not provided)'),
-            serverUrl: z
-              .string()
-              .optional()
-              .describe('FileMaker server URL (uses env if not provided)'),
           },
         },
       },
@@ -329,27 +317,11 @@ server.tool(
       .describe(
         'FileMaker database name (uses env FILEMAKER_DATABASE if not provided)'
       ),
-    account: z
-      .string()
-      .optional()
-      .describe('Account name (uses env if not provided)'),
-    password: z
-      .string()
-      .optional()
-      .describe('Password (uses env if not provided)'),
-    serverUrl: z
-      .string()
-      .optional()
-      .describe('FileMaker server URL (uses env if not provided)'),
   },
-  async (params) => {
+  async (params: { fileName?: string }) => {
     const tokenResponse = await getFileMakerToken(
-      params.fileName || DEFAULT_DATABASE,
-      params.account,
-      params.password,
-      params.serverUrl
+      params.fileName || DEFAULT_DATABASE
     );
-
     if (!tokenResponse.success) {
       return {
         content: [
@@ -362,12 +334,7 @@ server.tool(
     }
 
     return {
-      content: [
-        {
-          type: 'text',
-          text: tokenResponse.data?.token || '',
-        },
-      ],
+      content: [{ type: 'text', text: tokenResponse.data?.token || '' }],
     };
   }
 );
@@ -392,8 +359,13 @@ server.tool(
     fieldName: z.string().describe('Field name to search (required)'),
     searchText: z.string().describe('Search text (required)'),
   },
-  async (params) => {
-    // まずトークンを取得
+  async (params: {
+    fileName?: string;
+    layoutName?: string;
+    fieldName: string;
+    searchText: string;
+  }) => {
+    // トークンを取得して検索を実行
     const tokenResponse = await getFileMakerToken(
       params.fileName || DEFAULT_DATABASE
     );
@@ -408,13 +380,11 @@ server.tool(
       };
     }
 
-    // 検索を実行
     const findResponse = await findRecords(
-      params.fileName || DEFAULT_DATABASE,
       params.fieldName,
       params.searchText,
       tokenResponse.data.token,
-      undefined,
+      params.fileName || DEFAULT_DATABASE,
       params.layoutName || DEFAULT_LAYOUT
     );
 
@@ -429,13 +399,9 @@ server.tool(
       };
     }
 
-    // 検索結果を返す
     return {
       content: [
-        {
-          type: 'text',
-          text: JSON.stringify(findResponse.data, null, 2),
-        },
+        { type: 'text', text: JSON.stringify(findResponse.data, null, 2) },
       ],
     };
   }
