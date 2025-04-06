@@ -408,10 +408,9 @@ const server = new McpServer(
     capabilities: {
       tools: {
         'get-token': {
-          description:
-            'Get FileMaker Data API token: FileMaker APIで使用するトークンを取得するツール。\n' +
-            '他のツールを実行する前に、まず最初に実行してトークンを取得してください。\n' +
-            '取得したトークンは、他のツールで利用します。abandon-tokenの場合も、このtokenを与えてください。',
+          description: `Get FileMaker Data API token: FileMaker APIで使用するトークンを取得するツール。
+他のツールを実行する前に、まず最初に実行してトークンを取得してください。
+取得したトークンは、他のツールで利用します。abandon-tokenの引数には、このtokenを与えてください。`,
           parameters: {},
         },
         'abandon-token': {
@@ -426,31 +425,37 @@ const server = new McpServer(
           },
         },
         'get-layout-metadata': {
-          description:
-            'Find records in FileMaker database: データベースからレコードを検索するツール。\n' +
-            '以下の手順で検索を行ってください：\n' +
-            '1. get-tokenを実行してトークンを取得\n' +
-            '2. 取得したトークンを使用してget-layout-metadataを実行し、フィールド情報を取得\n' +
-            '3. 取得したフィールド情報と会話の文脈から、最適なフィールドを選択\n' +
-            '例：\n' +
-            '- ユーザーが「名前が田中さんのレコードを探して」と言った場合 → nameフィールドを選択\n' +
-            '- ユーザーが「電話番号が0312345678の人を探して」と言った場合 → phoneフィールドを選択\n' +
-            '- ユーザーが日時関係の検索条件を指定してきたら → dateフィールドを選択\n' +
-            '4. 選択したフィールド名をfieldNameパラメータに指定\n',
+          description: `Find records in FileMaker database: データベースからレコードを検索するツール。
+以下の手順で検索を行ってください：
+1. get-tokenを実行してトークンを取得
+2. 取得したトークンを使用してget-layout-metadataを実行し、フィールド情報を取得
+3. 取得したフィールド情報と会話の文脈から、最適なフィールドを選択
+例：
+- ユーザーが「名前が田中さんのレコードを探して」と言った場合 → nameフィールドを選択
+- ユーザーが「電話番号が0312345678の人を探して」と言った場合 → phoneフィールドを選択
+- ユーザーが日時関係の検索条件を指定してきたら → dateフィールドを選択
+4. 選択したフィールド名をfieldNameパラメータに指定`,
           parameters: {},
         },
         'find-records': {
-          description:
-            'Find records in FileMaker database: データベースからレコードを検索するツール。' +
-            'fieldNameパラメータには、get-layout-metadataで取得したフィールド情報から、' +
-            'searchTextの内容に最も適したフィールド名を選択して指定してください。' +
-            '検索文字列をsearchTextパラメータに指定\n' +
-            'searchTextが日付の場合、mm-dd-yyyyの形式に変換して指定してください。例えば"2025年4月1日"は"04-01-2025"と指定してください。' +
-            '検索条件の書き方(searchTextパラメータの書き方)\n' +
-            '- 複数フィールドの検索条件の場合、{フィールド名1: 検索文字列1, フィールド名2: 検索文字列2, フィールド名3: 検索文字列3}のように指定してください。\n' +
-            '- 数値や日付の範囲指定の書き方は、"04-01-2025...04-30-2025",2...9のように検索文字列を組み立てて下さい\n' +
-            '- 数値や日付の大なり小なりの書き方は、"> 04-01-2025"または"<= 04-01-2025"のように検索文字列を組み立てて下さい\n' +
-            '検索実行後、abandon-tokenを実行してトークンを破棄',
+          description: `Find records in FileMaker database: データベースからレコードを検索するツール。
+1. get-tokenを実行してトークンを取得
+2. 取得したトークンを使用してget-layout-metadataを実行し、フィールド情報を取得
+3. 取得したフィールド情報と会話の文脈から、最適なフィールドを選択
+
+fieldNameパラメータには、get-layout-metadataで取得したフィールド情報から、
+searchTextの内容に最も適したフィールド名を選択して指定してください。
+検索文字列をsearchTextパラメータに指定
+
+searchTextが日付の場合、mm-dd-yyyyの形式に変換して指定してください。
+例えば"2025年4月1日"は"04-01-2025"と指定してください。
+
+検索条件の書き方(searchTextパラメータの書き方)：
+- 複数フィールドの検索条件の場合、{フィールド名1: 検索文字列1, フィールド名2: 検索文字列2, フィールド名3: 検索文字列3}のように指定してください。
+- 数値や日付の範囲指定の書き方は、"04-01-2025...04-30-2025",2...9のように検索文字列を組み立てて下さい
+- 数値や日付の大なり小なりの書き方は、"> 04-01-2025"または"<= 04-01-2025"のように検索文字列を組み立てて下さい
+
+検索実行後、abandon-tokenを実行してトークンを破棄`,
           parameters: {
             fieldName: z.string().describe('Field name to search (required)'),
             searchText: z.string().describe('Search text (required)'),
