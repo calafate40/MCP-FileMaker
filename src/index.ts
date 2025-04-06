@@ -562,7 +562,12 @@ server.tool(
  */
 server.tool(
   'find-records',
-  'Find records in FileMaker database',
+  `Find records in FileMaker database
+
+検索条件の書き方(searchTextパラメータの書き方)：
+- 複数フィールドの検索条件の場合、{フィールド名1: 検索文字列1, フィールド名2: 検索文字列2, フィールド名3: 検索文字列3}のように指定してください。
+- 数値や日付の範囲指定の書き方は、"04-01-2025...04-30-2025",2...9のように検索文字列を組み立てて下さい
+- 数値や日付の大なり小なりの書き方は、"> 04-01-2025"または"<= 04-01-2025"のように検索文字列を組み立てて下さい`,
   {
     fieldName: z.string().describe('Field name to search (required)'),
     searchText: z.string().describe('Search text (required)'),
