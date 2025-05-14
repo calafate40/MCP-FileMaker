@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/calafate40-mcp-filemaker-badge.png)](https://mseep.ai/app/calafate40-mcp-filemaker)
+
 # FileMaker Data API MCP Server
 
 FileMaker Data API を Model Context Protocol（MCP）に対応させるサーバー実装です。FileMaker データベースへのアクセスを提供します。
